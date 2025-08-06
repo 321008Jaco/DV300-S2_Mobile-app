@@ -3,19 +3,20 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "reac
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
+import { registerUser } from "../authService";
 
-export default function SignUpScreen() {
+export default function SignUpScreen({ navigation }: any) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigation = useNavigation();
+  const [username, setUsername] = useState("");
 
   const handleSignUp = async () => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      Alert.alert("Success", "Account created!");
-      navigation.navigate("Login" as never);
+      await registerUser(email, password, username);
+      Alert.alert("Success", "User registered!");
+      navigation.navigate("Login");
     } catch (error: any) {
-      Alert.alert("Sign Up Failed", error.message);
+      Alert.alert("Error", error.message);
     }
   };
 
