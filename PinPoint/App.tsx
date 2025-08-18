@@ -6,6 +6,7 @@ import LoginScreen from "./screens/LoginScreen";
 import SignUpScreen from "./screens/SignUpScreen";
 import HomeScreen from "./screens/HomeScreen";
 import { Ionicons } from "@expo/vector-icons";
+import ProfileScreen from "./screens/ProfileScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -38,7 +39,7 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Map" component={HomeScreen} />
-      <Tab.Screen name="Profile" component={DummyScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
       <Tab.Screen name="Settings" component={DummyScreen} />
     </Tab.Navigator>
   );

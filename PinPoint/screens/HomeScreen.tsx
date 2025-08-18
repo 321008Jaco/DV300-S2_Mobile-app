@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert } from "react-native";
-import MapView, { Marker, MapPressEvent } from "react-native-maps";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, Linking } from "react-native";
+import MapView, { Marker, MapPressEvent, Region } from "react-native-maps";
 import * as Location from "expo-location";
-import { auth, db } from "../firebaseConfig";
-import { collection, addDoc, onSnapshot } from "firebase/firestore";
+import { auth, db } from "../services/firebaseConfig";
+import { collection, addDoc, onSnapshot, query, where } from "firebase/firestore";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type Pin = {
   id?: string;
@@ -21,21 +22,37 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newPin, setNewPin] = useState({ name: "", type: "", isPublic: true });
   const [pendingCoords, setPendingCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [activeTab, setActiveTab] = useState<"global" | "private">("global");
+  const [selectedMarker, setSelectedMarker] = useState<Pin | null>(null);
+  const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Denied", "Location permission is required.");
-        return;
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        let location = await Location.getCurrentPositionAsync({});
+        setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
       }
-      const location = await Location.getCurrentPositionAsync({});
-      setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
     })();
   }, []);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "pins"), (snapshot) => {
+    if (!userLocation) return;
+    const region: Region = {
+      latitude: userLocation.latitude,
+      longitude: userLocation.longitude,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    };
+    mapRef.current?.animateToRegion(region, 800);
+  }, [userLocation]);
+
+  useEffect(() => {
+    const q =
+      activeTab === "global"
+        ? query(collection(db, "pins"), where("isPublic", "==", true))
+        : query(collection(db, "pins"), where("userId", "==", auth.currentUser?.uid || ""));
+    const unsub = onSnapshot(q, (snapshot) => {
       const fetchedPins: Pin[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
@@ -52,9 +69,13 @@ export default function HomeScreen() {
       setMarkers(fetchedPins);
     });
     return () => unsub();
-  }, []);
+  }, [activeTab]);
 
   const handleMapPress = (event: MapPressEvent) => {
+    if (selectedMarker) {
+      setSelectedMarker(null);
+      return;
+    }
     const { latitude, longitude } = event.nativeEvent.coordinate;
     setPendingCoords({ latitude, longitude });
     setModalVisible(true);
@@ -79,14 +100,39 @@ export default function HomeScreen() {
       setPendingCoords(null);
       setModalVisible(false);
     } catch (error) {
-      console.error("Error adding pin:", error);
       Alert.alert("Error", "Could not add pin to Firestore");
     }
   };
 
+  const handleWaypoint = () => {
+    if (!selectedMarker) {
+      Alert.alert("Error", "No pin selected");
+      return;
+    }
+    const { latitude, longitude } = selectedMarker;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    Linking.openURL(url);
+  };
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === "global" && styles.activeTab]}
+          onPress={() => setActiveTab("global")}
+        >
+          <Text style={activeTab === "global" ? styles.activeTabText : styles.tabText}>Global</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === "private" && styles.activeTab]}
+          onPress={() => setActiveTab("private")}
+        >
+          <Text style={activeTab === "private" ? styles.activeTabText : styles.tabText}>Private</Text>
+        </TouchableOpacity>
+      </View>
+
       <MapView
+        ref={mapRef}
         style={styles.map}
         initialRegion={{
           latitude: userLocation?.latitude || -25.7479,
@@ -94,7 +140,14 @@ export default function HomeScreen() {
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}
-        onPress={handleMapPress}
+          onPress={() => {
+          if (selectedMarker) setSelectedMarker(null);
+          }}
+          onLongPress={(e) => {
+            const { latitude, longitude } = e.nativeEvent.coordinate;
+            setPendingCoords({ latitude, longitude });
+            setModalVisible(true);
+          }}
       >
         {userLocation && <Marker coordinate={userLocation} title="You are here" pinColor="#FD5308" />}
         {markers.map((marker) => (
@@ -103,14 +156,21 @@ export default function HomeScreen() {
             coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
             title={marker.name}
             description={marker.type}
-            pinColor={marker.isPublic ? "#FD5308" : "#FD5308"}
+            pinColor={marker.isPublic ? "#FD5308" : "blue"}
+            onPress={() => setSelectedMarker(marker)}
           />
         ))}
       </MapView>
 
-      <View style={styles.overlay}>
-        <Text style={styles.overlayText}>Logged in as: {auth.currentUser?.email || "Unknown"}</Text>
-      </View>
+      {selectedMarker && (
+        <View style={styles.markerDetails}>
+          <Text style={styles.markerTitle}>{selectedMarker.name}</Text>
+          <Text>{selectedMarker.type}</Text>
+          <TouchableOpacity style={styles.waypointButton} onPress={handleWaypoint}>
+            <Text style={styles.waypointText}>Waypoint</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <TouchableOpacity
         style={styles.addButton}
@@ -170,22 +230,30 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  map: { ...StyleSheet.absoluteFillObject },
-  overlay: {
-    position: "absolute",
-    top: 40,
-    alignSelf: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 8,
-    borderRadius: 8,
+  container: { flex: 1, backgroundColor: "#fff" },
+  map: { flex: 1 },
+  tabs: {
+    flexDirection: "row",
+    justifyContent: "center",
+    paddingVertical: 10,
+    backgroundColor: "transparent",
+    zIndex: 1,
   },
-  overlayText: { color: "#fff", fontWeight: "bold" },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginHorizontal: 5,
+    backgroundColor: "rgba(0,0,0,0.1)",
+  },
+  activeTab: { backgroundColor: "#FD5308" },
+  tabText: { color: "#555", fontWeight: "600" },
+  activeTabText: { color: "#fff" },
   addButton: {
     position: "absolute",
     bottom: 100,
@@ -227,16 +295,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "#ccc",
   },
-  activeToggle: {
-    backgroundColor: "#FD5308",
-  },
-  activeText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  inactiveText: {
-    color: "#333",
-  },
+  activeToggle: { backgroundColor: "#FD5308" },
+  activeText: { color: "#fff", fontWeight: "600" },
+  inactiveText: { color: "#333" },
   confirmButton: {
     backgroundColor: "#FD5308",
     padding: 12,
@@ -244,10 +305,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  confirmText: {
-    color: "#fff",
-    fontSize: 16,
-  },
+  confirmText: { color: "#fff", fontSize: 16 },
   cancelButton: {
     backgroundColor: "#ccc",
     padding: 12,
@@ -255,8 +313,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  cancelText: {
-    color: "#333",
-    fontSize: 16,
+  cancelText: { color: "#333", fontSize: 16 },
+  markerDetails: {
+    position: "absolute",
+    bottom: 180,
+    left: 20,
+    right: 20,
+    backgroundColor: "white",
+    padding: 15,
+    borderRadius: 10,
+    elevation: 3,
   },
+  markerTitle: { fontSize: 18, fontWeight: "bold" },
+  waypointButton: {
+    marginTop: 10,
+    backgroundColor: "#FD5308",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  waypointText: { color: "white", fontWeight: "bold" },
 });
