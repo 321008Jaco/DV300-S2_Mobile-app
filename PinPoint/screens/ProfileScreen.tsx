@@ -4,8 +4,10 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../services/firebaseConfig";
 import { doc, getDoc, runTransaction, setDoc, addDoc, collection, onSnapshot, query, where, updateDoc, deleteDoc, serverTimestamp, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const uid = auth.currentUser?.uid || null;
 
   const [displayName, setDisplayName] = useState("");
@@ -391,7 +393,9 @@ export default function ProfileScreen() {
       <View key={key} style={styles.cardRow}>
         <View style={styles.userCell}>
           {avatar ? <Image source={{ uri: avatar }} style={styles.avatarSm} /> : <View style={styles.avatarSmPlaceholder}><Text style={styles.avatarSmInitial}>{init}</Text></View>}
-          <Text style={styles.cardText}>{name}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("ViewFriends", { uid: userId })} activeOpacity={0.8}>
+            <Text style={styles.cardText}>{name}</Text>
+          </TouchableOpacity>
         </View>
         {right}
       </View>

@@ -6,6 +6,8 @@ import { auth, db } from "../services/firebaseConfig";
 import { collection, addDoc, onSnapshot, query, where, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+let hasShownOnboarding = false;
+
 type Pin = {
   id?: string;
   latitude: number;
@@ -29,13 +31,22 @@ export default function HomeScreen() {
   const [editPin, setEditPin] = useState({ name: "", type: "", visibility: "public" as "public" | "private" | "close" });
   const [creatorProfiles, setCreatorProfiles] = useState<Record<string, { photoURL?: string | null; userName?: string; displayName?: string }>>({});
   const [closeFriendIds, setCloseFriendIds] = useState<string[]>([]);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
+    if (!hasShownOnboarding) {
+      setOnboardingVisible(true);
+      hasShownOnboarding = true;
+    }
+  }, []);
+
+  useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      let { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({});
+        let location = await Location.getCurrentPositionAsync({});
         setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
       }
     })();
@@ -111,12 +122,11 @@ export default function HomeScreen() {
         setMarkers(list);
       });
     } else {
-      const ids = Array.from(new Set([...(closeFriendIds || []), me]));
-      if (ids.length === 0) {
+      if (!closeFriendIds || closeFriendIds.length === 0) {
         setMarkers([]);
         return;
       }
-      const batch = ids.slice(0, 10);
+      const batch = closeFriendIds.slice(0, 10);
       const q3 = query(collection(db, "pins"), where("visibility", "==", "close"), where("userId", "in", batch));
       unsub = onSnapshot(q3, (snapshot) => {
         const list: Pin[] = [];
@@ -158,11 +168,17 @@ export default function HomeScreen() {
     })();
   }, [markers]);
 
-  const handleLongPress = (event: LongPressEvent) => {
+  const handleMapPress = (event: MapPressEvent) => {
     if (selectedMarker) {
       setSelectedMarker(null);
       return;
     }
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    setPendingCoords({ latitude, longitude });
+    setModalVisible(true);
+  };
+
+  const handleLongPress = (event: LongPressEvent) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     setPendingCoords({ latitude, longitude });
     setModalVisible(true);
@@ -256,6 +272,14 @@ export default function HomeScreen() {
     </View>
   );
 
+  const enableLocationFromOnboarding = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status === "granted") {
+      const loc = await Location.getCurrentPositionAsync({});
+      setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.tabs}>
@@ -284,6 +308,7 @@ export default function HomeScreen() {
         }}
         onLongPress={handleLongPress}
       >
+        {userLocation && <Marker coordinate={userLocation} title="You are here" pinColor="#FD5308" />}
         {markers.map((marker) => {
           const creator = (marker.userId && creatorProfiles[marker.userId]) || {};
           const uri = creator.photoURL || null;
@@ -401,6 +426,61 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={onboardingVisible} transparent animationType="fade">
+        <View style={styles.onboardBackdrop}>
+          <View style={styles.onboardCard}>
+            {onboardingStep === 0 && (
+              <View style={styles.onboardInner}>
+                <Text style={styles.onboardTitle}>Welcome to PinPoint</Text>
+                <Text style={styles.onboardText}>Drop pins, share with friends, and keep private or close-friends spots.</Text>
+                <View style={styles.onboardDots}>
+                  <View style={[styles.dot, styles.dotActive]} />
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                </View>
+                <TouchableOpacity style={styles.onboardPrimary} onPress={() => setOnboardingStep(1)}>
+                  <Text style={styles.onboardPrimaryText}>Next</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.onboardGhost} onPress={() => setOnboardingVisible(false)}>
+                  <Text style={styles.onboardGhostText}>Skip</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {onboardingStep === 1 && (
+              <View style={styles.onboardInner}>
+                <Text style={styles.onboardTitle}>Enable Location</Text>
+                <Text style={styles.onboardText}>We use your location to center the map and help you add pins faster.</Text>
+                <View style={styles.onboardDots}>
+                  <View style={styles.dot} />
+                  <View style={[styles.dot, styles.dotActive]} />
+                  <View style={styles.dot} />
+                </View>
+                <TouchableOpacity style={styles.onboardPrimary} onPress={enableLocationFromOnboarding}>
+                  <Text style={styles.onboardPrimaryText}>Enable Location</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.onboardGhost} onPress={() => setOnboardingStep(2)}>
+                  <Text style={styles.onboardGhostText}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {onboardingStep === 2 && (
+              <View style={styles.onboardInner}>
+                <Text style={styles.onboardTitle}>Add a Pin</Text>
+                <Text style={styles.onboardText}>Long-press the map to drop a pin. Choose Public, Private, or Close Friends visibility.</Text>
+                <View style={styles.onboardDots}>
+                  <View style={styles.dot} />
+                  <View style={styles.dot} />
+                  <View style={[styles.dot, styles.dotActive]} />
+                </View>
+                <TouchableOpacity style={styles.onboardPrimary} onPress={() => setOnboardingVisible(false)}>
+                  <Text style={styles.onboardPrimaryText}>Get Started</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -442,4 +522,16 @@ const styles = StyleSheet.create({
   pinFallback: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   pinInitial: { color: "#fff", fontWeight: "700" },
   pinDiamond: { width: 12, height: 12, transform: [{ rotate: "45deg" }], marginTop: -6, borderRadius: 2 },
+  onboardBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+  onboardCard: { width: "86%", backgroundColor: "#fff", borderRadius: 16, padding: 20 },
+  onboardInner: { alignItems: "center" },
+  onboardTitle: { fontSize: 22, fontWeight: "800", color: "#111", textAlign: "center", marginBottom: 8 },
+  onboardText: { fontSize: 14, color: "#444", textAlign: "center", lineHeight: 20, marginBottom: 16 },
+  onboardDots: { flexDirection: "row", gap: 6, marginBottom: 16 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#e5e7eb" },
+  dotActive: { backgroundColor: "#FD5308" },
+  onboardPrimary: { backgroundColor: "#FD5308", paddingVertical: 12, paddingHorizontal: 18, borderRadius: 12, alignItems: "center", alignSelf: "stretch" },
+  onboardPrimaryText: { color: "#fff", fontWeight: "800" },
+  onboardGhost: { paddingVertical: 10, alignItems: "center", marginTop: 8, alignSelf: "stretch" },
+  onboardGhostText: { color: "#6b7280", fontWeight: "700" },
 });
