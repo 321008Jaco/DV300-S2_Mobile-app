@@ -19,16 +19,30 @@
         "googleMapsApiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg"
       }
     },
-"android": {
-  "package": "com.jacomostert.pinpoint",
-  "adaptiveIcon": {
-    "foregroundImage": "./assets/icon.png",
-    "backgroundColor": "#ffffff"
-  },
-  "edgeToEdgeEnabled": true,
-  "config": { "googleMaps": { "apiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg" } }
-},
-    "web": { "favicon": "./assets/favicon.png" },
-    "extra": { "eas": { "projectId": "97f25aaf-0e69-4234-be07-71bee03c57ca" } }
+    "android": {
+      "package": "com.jacomostert.pinpoint",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg"
+        }
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "97f25aaf-0e69-4234-be07-71bee03c57ca"
+      }
+    }
   }
 }
