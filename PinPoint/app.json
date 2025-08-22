@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/PinPointSplash.png",
       "resizeMode": "contain",
@@ -14,19 +14,25 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.jacomostert.pinpoint",
       "config": {
         "googleMapsApiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg"
       }
     },
     "android": {
+      "package": "com.jacomostert.pinpoint",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/PinPointSplash.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg"
+        }
+      }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "web": { "favicon": "./assets/favicon.png" },
+    "extra": { "eas": { "projectId": "97f25aaf-0e69-4234-be07-71bee03c57ca" } }
   }
 }

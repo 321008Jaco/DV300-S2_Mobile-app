@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert, Linking, Image } from "react-native";
-import MapView, { Marker, MapPressEvent, Region, LongPressEvent } from "react-native-maps";
+import MapView, { Marker, MapPressEvent, Region, LongPressEvent, PROVIDER_GOOGLE } from "react-native-maps";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
 import { auth, db } from "../services/firebaseConfig";
 import { collection, addDoc, onSnapshot, query, where, doc, updateDoc, deleteDoc, getDoc } from "firebase/firestore";
@@ -42,15 +43,27 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        let location = await Location.getCurrentPositionAsync({});
-        setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+useEffect(() => {
+  let sub: Location.LocationSubscription | null = null;
+  (async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") return;
+    const pos = await Location.getCurrentPositionAsync({});
+    setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    sub = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 2000,
+        distanceInterval: 5,
+      },
+      (loc) => {
+        const { latitude, longitude } = loc.coords;
+        setUserLocation({ latitude, longitude });
       }
-    })();
-  }, []);
+    );
+  })();
+  return () => { sub && sub.remove(); };
+}, []);
 
   useEffect(() => {
     if (!userLocation) return;
@@ -295,6 +308,7 @@ export default function HomeScreen() {
       </View>
 
       <MapView
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
         ref={mapRef}
         style={styles.map}
         initialRegion={{
