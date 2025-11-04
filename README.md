@@ -246,11 +246,11 @@ Close Friends uses Firestore “signal” docs to sync status both ways.
 
 ## Screenshots / Mockups
 
-<img width="301" height="539" alt="image" src="https://github.com/user-attachments/assets/3ada6bf2-b9d2-4cdd-a4b9-866847ebc80e" />
+<img width="1080" height="1350" alt="Beige Minimalist Hand Holding Phone Mockup Instagram Post" src="https://github.com/user-attachments/assets/355b218f-c390-4b9b-b3ea-4c04506f8348" />
 
-<img width="797" height="668" alt="image" src="https://github.com/user-attachments/assets/cf97fc20-a0cd-494c-a737-efa39efcc516" />
+<img width="1080" height="1920" alt="Neutral Minimalist Collage Frame Mockup Pinterest Pin" src="https://github.com/user-attachments/assets/26c264b2-b6d3-44ed-a12c-c262674b29ff" />
 
-
+<img width="1080" height="1920" alt="Pastel Pink Trendy Animated Chat Message Mockup Meme Mobile Video" src="https://github.com/user-attachments/assets/60249d9c-3b6d-48c3-888c-c6240a139d29" />
 
 [⬆️ Back to top](#pinpoint)
 
@@ -282,4 +282,5 @@ Expo & React Native
 Figma & Stack Overflow
 
 [⬆️ Back to top](#pinpoint)
+---
 ---
