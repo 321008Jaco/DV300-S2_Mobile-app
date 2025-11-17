@@ -16,11 +16,16 @@
       "bundleIdentifier": "com.jacomostert.pinpoint",
       "config": {
         "googleMapsApiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg"
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
       "package": "com.jacomostert.pinpoint",
       "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
       ],
@@ -33,15 +38,20 @@
         "googleMaps": {
           "apiKey": "AIzaSyC_TtcfX30z0V8qhTZhzcb4AFifBIkTZcg"
         }
-      }
+      },
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "97f25aaf-0e69-4234-be07-71bee03c57ca"
+        "projectId": "a5acee24-da6f-427a-bb1b-9f68103dabba"
       }
+    },
+    "owner": "jacomostert",
+    "updates": {
+      "url": "https://u.expo.dev/a5acee24-da6f-427a-bb1b-9f68103dabba"
     }
   }
 }
